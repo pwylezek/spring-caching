@@ -1,0 +1,43 @@
+version: "3.7"
+
+networks:
+  backend:
+    labels:
+      network.description: "Back end network"
+
+services:
+  nginx:
+    image: nginx:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - backend
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    networks:
+      - backend
+    ports:
+      - "6379:6379"
+
+  backend-pod-1:
+    image: gitlab.nubidev.pl/skillup/caching-backend:latest
+    restart: unless-stopped
+    networks:
+      - backend
+    environment:
+      SPRING_REDIS_HOST: redis
+      JAVA_OPTS: "-Xmx256M"
+
+  backend-pod-2:
+    image: gitlab.nubidev.pl/skillup/caching-backend:latest
+    restart: unless-stopped
+    networks:
+      - backend
+    environment:
+      SPRING_REDIS_HOST: redis
+      JAVA_OPTS: "-Xmx256M"

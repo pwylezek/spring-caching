@@ -1,0 +1,78 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath 'com.bmuschko:gradle-docker-plugin:7.3.0'
+    }
+}
+
+apply plugin: com.bmuschko.gradle.docker.DockerRemoteApiPlugin
+
+import com.bmuschko.gradle.docker.tasks.image.*
+
+def restoreLastModifiedDate(List copyDetails, File libsDir) {
+    copyDetails.each { FileCopyDetails details ->
+        def target = new File(libsDir, details.path)
+        if(target.exists()) {
+            target.setLastModified(0)
+        }
+    }
+}
+
+docker{
+    if (System.env.GITLAB_CI) {
+        url = "https://docker:2375"
+    }
+    registryCredentials {
+        url = 'gitlab.nubidev.pl'
+        username = System.env.CI_REGISTRY_USER
+        password = System.env.CI_REGISTRY_PASSWORD
+    }
+}
+
+task unpackFatJar(type: Sync, dependsOn: 'assemble') {
+    def jarFile = file("${buildDir}/libs/${project.name}-${project.version}.jar")
+    def outputDir = file("${buildDir}/docker")
+
+    from zipTree(jarFile)
+    into outputDir
+
+    // hack to preserve modification date - required for Docker cache
+    def copyDetails = []
+    eachFile { copyDetails << it }
+    doLast { restoreLastModifiedDate(copyDetails, libsDirectory.asFile.get()) }
+}
+
+task copyDockerfile(type: Copy) {
+    mustRunAfter unpackFatJar
+    from rootProject.file('Dockerfile')
+    into buildDir.absolutePath + '/docker'
+}
+
+task buildImage(type: DockerBuildImage) {
+    dependsOn copyDockerfile, unpackFatJar
+
+    inputDir = file("${buildDir}/docker")
+    images.addAll([
+            "gitlab.nubidev.pl/${project.group}/${project.name}:${project.version.toString()}",
+            "gitlab.nubidev.pl/${project.group}/${project.name}:latest"
+    ])
+    remove = true
+    pull = true
+}
+
+task pushImage(type: DockerPushImage) {
+    dependsOn buildImage
+    images.add("gitlab.nubidev.pl/${project.group}/${project.name}:${project.version.toString()}")
+}
+
+task pushLatestImage(type: DockerPushImage) {
+    dependsOn buildImage
+    images.add("gitlab.nubidev.pl/${project.group}/${project.name}:latest")
+}
+
+task dockerImage {
+    dependsOn pushImage, pushLatestImage
+}

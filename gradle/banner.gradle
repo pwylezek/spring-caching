@@ -1,0 +1,10 @@
+processResources {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from('src/main/resources') {
+        include 'banner.txt'
+        filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: ['version': version.toString(), 'revision': grgit.head().id])
+    }
+    from('src/main/resources') {
+        exclude 'banner.txt'
+    }
+}

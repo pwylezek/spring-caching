@@ -1,0 +1,37 @@
+sourceSets {
+    integTest {
+        java {
+            srcDir file('src/integTest/java')
+            compileClasspath += main.output + test.output + configurations.testRuntimeClasspath
+        }
+        resources.srcDir file('src/integTest/resources')
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+idea.module {
+    sourceSets.integTest.allSource.srcDirs.each {
+        testSourceDirs += it
+    }
+
+    scopes.TEST.plus += [configurations.integTestCompileClasspath]
+    scopes.TEST.plus += [configurations.integTestRuntimeClasspath]
+}
+
+task integrationTest(type: Test) {
+    description = 'Runs the integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integTest.output.classesDirs
+    classpath = sourceSets.integTest.runtimeClasspath
+
+    reports {
+        html.setDestination(project.file("${html.getOutputLocation().get()}/integration"))
+        junitXml.setDestination(project.file("${junitXml.getOutputLocation().get()}/integration"))
+    }
+    testLogging {
+        events 'started', 'passed', 'failed'
+    }
+    useJUnitPlatform()
+}
+
+check.dependsOn integrationTest

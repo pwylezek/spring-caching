@@ -21,12 +21,14 @@ public class CachingConfiguration {
 
     public final int cacheTtlSeconds = 30;
 
-    public static final String PATIENTS_DOCUMENTS_CACHE_NAME = "patient-documents:";
+    public static final String PATIENTS_DOCUMENTS_CACHE_NAME_V5 = "patient-documents-v5:";
+    public static final String PATIENTS_DOCUMENTS_CACHE_NAME_V6 = "patient-documents-v6:";
 
     @Bean
     CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory) {
         return RedisCacheManager.RedisCacheManagerBuilder.fromConnectionFactory(redisConnectionFactory)
-                .withCacheConfiguration(PATIENTS_DOCUMENTS_CACHE_NAME, cacheConfiguration().entryTtl(Duration.ofSeconds(cacheTtlSeconds)))
+                .withCacheConfiguration(PATIENTS_DOCUMENTS_CACHE_NAME_V5, cacheConfiguration().entryTtl(Duration.ofSeconds(cacheTtlSeconds)))
+                .withCacheConfiguration(PATIENTS_DOCUMENTS_CACHE_NAME_V6, cacheConfiguration().entryTtl(Duration.ofSeconds(cacheTtlSeconds)))
                 .build();
     }
 

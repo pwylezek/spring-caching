@@ -188,7 +188,7 @@ public class PatientsService {
      * @param patientId
      * @return List<PatientDocument>
      */
-    @Cacheable(value = CachingConfiguration.PATIENTS_DOCUMENTS_CACHE_NAME)
+    @Cacheable(value = CachingConfiguration.PATIENTS_DOCUMENTS_CACHE_NAME_V5)
     public PatientDocumentsResponse getPatientDocumentsV5(String patientId) {
         log.info("Fetching patient documents in V5 implementation. Patient id: {}", patientId);
         var patient = getPatientByLoggedDoctorOrThrowNotFound(patientId);
@@ -217,7 +217,7 @@ public class PatientsService {
      * @param patientId
      * @return List<PatientDocument>
      */
-    @Cacheable(value = CachingConfiguration.PATIENTS_DOCUMENTS_CACHE_NAME, keyGenerator = "loginUserAwareCacheKeyGenerator")
+    @Cacheable(value = CachingConfiguration.PATIENTS_DOCUMENTS_CACHE_NAME_V6, keyGenerator = "loginUserAwareCacheKeyGenerator")
     public PatientDocumentsResponse getPatientDocumentsV6(String patientId) {
         log.info("Fetching patient documents in V6 implementation. Patient id: {}", patientId);
         var patient = getPatientByLoggedDoctorOrThrowNotFound(patientId);

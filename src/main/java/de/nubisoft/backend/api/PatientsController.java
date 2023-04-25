@@ -49,4 +49,10 @@ public class PatientsController {
     PatientDocumentsResponse getPatientDocumentsV6(@PathVariable String id) {
         return this.patientsService.getPatientDocumentsV6(id);
     }
+
+
+    @GetMapping("/{id}/documents/v7")
+    PatientDocumentsResponse getPatientDocumentsV7(@PathVariable String id) {
+        return this.patientsService.getPatientDocumentsV7(id);
+    }
 }

@@ -91,6 +91,19 @@ public class PatientsService {
 
     /**
      * Get patient documents with caching mechanism based on java.util.concurrent.ConcurrentHashMap and programmatic approach
+     * <p>
+     * PROS:
+     * - Almost zero entry level.
+     * - Uses embedded in Java SDK so none additional library is needed.
+     * - Zero additional components in the architecture needed.
+     * <p>
+     * CONS:
+     * - Uses RAM memory in order to store cache data (which is always limited)
+     * - Using RAM as the data storage may be problematic with bigger datasets.
+     * - Memory it is occupied as long as the application is running or the entry in Map is deleted.
+     * - Cache has to be manually evicted (if necessary).
+     * - Cache state is not kept between application restarts
+     * <p>
      *
      * @param patientId
      * @return List<PatientDocument>
@@ -104,6 +117,17 @@ public class PatientsService {
 
     /**
      * Get patient documents with caching mechanism based on Caffeine library and programmatic approach
+     * <p>
+     * PROS:
+     * - Entry level similar to V2 approach.
+     * - Cache can be automatically evicted after specific period of time or when too much memory is consumed.
+     * - Zero additional components in the architecture needed.
+     * <p>
+     * CONS:
+     * - Uses RAM memory in order to store cache data (which is always limited)
+     * - Using RAM as the data storage may be problematic with bigger datasets.
+     * - Cache state is not kept between application restarts
+     * <p>
      *
      * @param patientId
      * @return List<PatientDocument>
@@ -116,7 +140,18 @@ public class PatientsService {
     }
 
     /**
-     * Get patient documents with caching mechanism based on Redis library and programmatic approach
+     * Get patient documents with caching mechanism based on Redis Data library and programmatic approach
+     * <p>
+     * PROS:
+     * - Cache can be automatically evicted after specific period of time.
+     * - Does not use RAM memory in order to store cache data.
+     * - Cache is kept between application restarts
+     * - Cache is shared between different instances of the same microservice (especially important when horizontal scaling is enabled)
+     * <p>
+     * CONS:
+     * - Slightly higher entry level than in V2 and V3 (Redis Spring SDK knowledge required)
+     * - One (some cache storage provider, e.g. Redis) additional component in the architecture needed.
+     * <p>
      *
      * @param patientId
      * @return List<PatientDocument>
@@ -129,12 +164,26 @@ public class PatientsService {
             return new PatientDocumentsResponse(patient, cachedDocuments);
         }
         var fetchedDocuments = fetchPatientDocumentsFromVerySlowExternalService(patientId);
-        patientsDocumentCacheV4.opsForValue().set(patientId, fetchedDocuments);
+        patientsDocumentCacheV4.opsForValue().set(patientId, fetchedDocuments, Duration.ofMinutes(15));
         return new PatientDocumentsResponse(patient, fetchedDocuments);
     }
 
     /**
      * Get patient documents with caching mechanism based on Redis library and aspect oriented programming (AOP) approach
+     * <p>
+     * PROS:
+     * - Almost zero-code approach
+     * - Function code does not anything about caching mechanism (except annotations)
+     * - Caching can be disabled at any time without function body modification
+     * - Cache can be automatically evicted after specific period of time.
+     * - Does not use RAM memory in order to store cache data.
+     * - Cache is kept between application restarts
+     * - Cache is shared between different instances of the same microservice (especially important when horizontal scaling is enabled)
+     * <p>
+     * CONS:
+     * - One (some cache storage provider, e.g. Redis) additional component in the architecture needed.
+     * - In non-standalone, multi tenant applications we have to care about potential data leaks as the key is built based on method params only.
+     * <p>
      *
      * @param patientId
      * @return List<PatientDocument>
@@ -149,14 +198,49 @@ public class PatientsService {
 
     /**
      * Get patient documents with caching mechanism based on Redis library and aspect oriented programming (AOP) approach
-     * BUT WITH A BUG!
+     * <p>
+     * PROS:
+     * - Almost zero-code approach
+     * - Function code does not anything about caching mechanism (except annotations)
+     * - Caching can be disabled at any time without function body modification
+     * - Cache can be automatically evicted after specific period of time.
+     * - Does not use RAM memory in order to store cache data.
+     * - Cache is kept between application restarts
+     * - Cache is shared between different instances of the same microservice (especially important when horizontal scaling is enabled)
+     * - Cache key is aware about logged user id so for every user cache is built independently.
+     * <p>
+     * CONS:
+     * - One (some cache storage provider, e.g. Redis) additional component in the architecture needed.
+     * - In non-standalone, multi tenant applications we have to care about potential data leaks as the key is built based on method params only.
+     * <p>
      *
      * @param patientId
      * @return List<PatientDocument>
      */
+    @Cacheable(value = CachingConfiguration.PATIENTS_DOCUMENTS_CACHE_NAME, keyGenerator = "loginUserAwareCacheKeyGenerator")
     public PatientDocumentsResponse getPatientDocumentsV6(String patientId) {
+        log.info("Fetching patient documents in V6 implementation. Patient id: {}", patientId);
+        var patient = getPatientByLoggedDoctorOrThrowNotFound(patientId);
+        return new PatientDocumentsResponse(patient,
+                fetchPatientDocumentsFromVerySlowExternalService(patientId));
+    }
+
+
+    /**
+     * Get patient documents with caching mechanism based on Redis library and aspect oriented programming (AOP) approach
+     * BUT WITH A BUG!
+     * <p>
+     * BUG explanation:
+     * AOP (aspect oriented programming) in Spring works based on proxies. Proxy is not applied during accessing function within same class, field etc.
+     * Therefore, caching mechanism is not applied here (but function works perfectly fine though).
+     *
+     * @param patientId
+     * @return List<PatientDocument>
+     */
+    public PatientDocumentsResponse getPatientDocumentsV7(String patientId) {
         return getPatientDocumentsV5(patientId);
     }
+
     private Patient getPatientByLoggedDoctorOrThrowNotFound(String patientId) {
         var loggedDoctorId = loginService.getLoggedDoctorId();
         return patients.stream()

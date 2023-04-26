@@ -238,7 +238,7 @@ public class PatientsService {
      * @return List<PatientDocument>
      */
     public PatientDocumentsResponse getPatientDocumentsV7(String patientId) {
-        return getPatientDocumentsV5(patientId);
+        return getPatientDocumentsV6(patientId);
     }
 
     private Patient getPatientByLoggedDoctorOrThrowNotFound(String patientId) {

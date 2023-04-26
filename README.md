@@ -1,1 +1,1 @@
-# Spring repo for different caching mechanism comparison
+# Repository for different caching mechanisms in Spring comparison
